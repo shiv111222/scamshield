@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScamShield | Message Safety Checker</title>
+<style>
+:root {
+  --bg: #0b1020;
+  --panel: #141d31;
+  --text: #edf3ff;
+  --muted: #aab7d0;
+  --accent: #69e0c0;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: radial-gradient(ellipse at top, #192b49, var(--bg) 65%);
+  color: var(--text);
+  min-height: 100vh;
+}
+header {
+  text-align: center;
+  padding: 30px 16px 15px;
+}
+.logo { font-size: 34px; font-weight: 800; }
+.logo span { color: var(--accent); }
+header p { color: var(--muted); line-height: 1.6; }
+main { width: min(900px, 92%); margin: 20px auto 45px; }
+.card {
+  background: rgba(20,29,49,.96);
+  border: 1px solid #2a3854;
+  border-radius: 18px;
+  padding: 22px;
+  margin-bottom: 18px;
+}
+h2 { margin-top: 0; font-size: 20px; }
+textarea {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  padding: 15px;
+  border: 1px solid #40516e;
+  border-radius: 12px;
+  background: #0c1426;
+  color: white;
+  font: inherit;
+  line-height: 1.6;
+}
+textarea:focus { outline: 2px solid var(--accent); }
+button {
+  padding: 12px 16px;
+  margin: 7px 5px 0 0;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  background: var(--accent);
+  color: #09251f;
+}
+button.secondary {
+  background: #263752;
+  color: white;
+  border: 1px solid #425473;
+}
+button:hover { filter: brightness(1.08); }
+.hint { color: var(--muted); font-size: 13px; line-height: 1.6; }
+#result { display: none; }
+.score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+.score { font-size: 42px; font-weight: 800; }
+.tag {
+  display: inline-block;
+  border-radius: 20px;
+  padding: 8px 13px;
+  background: #30415c;
+  font-weight: bold;
+}
+.meter {
+  height: 10px;
+  background: #2b3850;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 15px 0;
+}
+#bar { width: 0; height: 100%; background: var(--accent); }
+li { margin: 10px 0; line-height: 1.5; }
+.footer { text-align: center; color: var(--muted); font-size: 12px; }
+@media(max-width:500px) {
+  .card { padding: 16px; }
+  .logo { font-size: 28px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🛡️ Scam<span>Shield</span></div>
+  <p>Think before you click.<br>Understand warning signs in suspicious messages.</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Message Risk Analyzer</h2>
+    <p>Paste an SMS, email, or job offer below.</p>
+    <textarea id="message" placeholder="Example: Congratulations! You have won a prize. Pay a processing fee now to claim it..."></textarea>
+    <button onclick="analyze()">Analyze Message</button>
+    <button class="secondary" onclick="sample()">Try Sample Scam</button>
+    <button class="secondary" onclick="clearAll()">Clear</button>
+    <p class="hint">Your text is analyzed locally in this browser. Do not paste real passwords, OTPs, or confidential information.</p>
+  </section>
+
+  <section class="card" id="result" aria-live="polite">
+    <h2>Analysis Report</h2>
+    <div class="score-row">
+      <div>
+        <div class="hint">Estimated warning score</div>
+        <div class="score" id="score">0/100</div>
+      </div>
+      <span class="tag" id="level">Not analyzed</span>
+    </div>
+    <div class="meter"><div id="bar"></div></div>
+    <h3>Warning signs found</h3>
+    <ul id="findings"></ul>
+    <h3>Recommended actions</h3>
+    <ul id="advice"></ul>
+  </section>
+
+  <section class="card">
+    <h2>How ScamShield works</h2>
+    <ol>
+      <li>Accepts text entered by the user.</li>
+      <li>Checks for predefined suspicious words and patterns.</li>
+      <li>Calculates a rule-based warning score.</li>
+      <li>Explains warning signs and suggests safer actions.</li>
+    </ol>
+  </section>
+  <p class="footer">BCA Innovation Project · ScamShield Awareness Tool</p>
+</main>
+
+<script>
+function sample() {
+  document.getElementById("message").value =
+    "Congratulations! You have been selected for a work from home job. Earn Rs. 5000 daily. Pay a registration fee immediately. Send your OTP and click http://example.invalid/claim to activate your account.";
+  analyze();
+}
+
+function clearAll() {
+  document.getElementById("message").value = "";
+  document.getElementById("result").style.display = "none";
+}
+
+function analyze() {
+  const text = document.getElementById("message").value.trim();
+  if (!text) {
+    alert("Please enter a message first.");
+    return;
+  }
+
+  const rules = [
+    { pattern: /\b(otp|one time password|verification code)\b/i,
+      points: 25, note: "Mentions an OTP or verification code." },
+    { pattern: /\b(password|pin|cvv|bank details)\b/i,
+      points: 25, note: "Requests or mentions sensitive account information." },
+    { pattern: /\b(pay|payment|fee|deposit|processing charge|registration fee)\b/i,
+      points: 20, note: "Mentions a payment or fee." },
+    { pattern: /\b(urgent|immediately|act now|limited time|within 24 hours)\b/i,
+      points: 15, note: "Uses urgency or pressure to make you act quickly." },
+    { pattern: /\b(prize|winner|won|lottery|free gift|claim reward)\b/i,
+      points: 15, note: "Promises a prize, reward, or unexpected benefit." },
+    { pattern: /\b(guaranteed income|earn .*daily|easy money|no experience required)\b/i,
+      points: 15, note: "Makes an unusually attractive earning promise." },
+    { pattern: /https?:\/\/\S+|www\.\S+/i,
+      points: 10, note: "Contains a web link. Verify the domain before opening it." },
+    { pattern: /\b(share|send|tell me|provide)\b.{0,30}\b(otp|password|pin)\b/i,
+      points: 25, note: "Appears to ask you to share an OTP, password, or PIN." }
+  ];
+
+  let score = 0;
+  const findings = [];
+
+  rules.forEach(rule => {
+    if (rule.pattern.test(text)) {
+      score += rule.points;
+      findings.push(rule.note);
+    }
+  });
+
+  score = Math.min(score, 100);
+
+  let level, color;
+  if (score >= 50) {
+    level = "High warning";
+    color = "#ff7777";
+  } else if (score >= 25) {
+    level = "Caution";
+    color = "#ffc76b";
+  } else {
+    level = "Fewer signals";
+    color = "#69e0c0";
+  }
+
+  document.getElementById("result").style.display = "block";
+  document.getElementById("score").textContent = score + "/100";
+  document.getElementById("level").textContent = level;
+  document.getElementById("level").style.color = color;
+  document.getElementById("bar").style.width = score + "%";
+  document.getElementById("bar").style.background = color;
+
+  document.getElementById("findings").innerHTML =
+    findings.length
+      ? findings.map(x => "<li>" + x + "</li>").join("")
+      : "<li>No predefined warning patterns were detected. This does not mean the message is safe.</li>";
+
+  const advice = [
+    "Never share your OTP, password, PIN, or CVV with another person.",
+    "Verify the sender through an independently found official website or phone number.",
+    "Do not pay unexpected fees or open suspicious links without checking them."
+  ];
+
+  document.getElementById("advice").innerHTML =
+    advice.map(x => "<li>" + x + "</li>").join("");
+}
+</script>
+</body>
+</html>
